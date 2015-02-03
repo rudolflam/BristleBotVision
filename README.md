@@ -1,2 +1,4 @@
 # BristleBotVision
-McgillRobotics2014 Team26
+Mcgill Robotics 2014 
+
+Team 26!
