@@ -1,0 +1,17 @@
+package filters;
+
+import org.opencv.core.Mat;
+import org.opencv.imgproc.Imgproc;
+
+import sight.MatUtils;
+
+public class HistogramEqualizationFilter implements MatFilter{
+
+	@Override
+	public Mat filter(Mat src) {
+		Mat out = MatUtils.createSameSizeMat(src, src.type());
+		Imgproc.cvtColor(src, out, Imgproc.COLOR_BGR2GRAY);
+		return out;
+	}
+	
+}

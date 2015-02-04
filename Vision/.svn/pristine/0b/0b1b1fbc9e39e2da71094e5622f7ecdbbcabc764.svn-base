@@ -1,0 +1,58 @@
+package sight;
+
+import java.awt.image.BufferedImage;
+import java.io.File;
+import java.io.IOException;
+
+import javax.imageio.ImageIO;
+
+import org.bytedeco.javacpp.opencv_core.IplImage;
+import org.bytedeco.javacv.CanvasFrame;
+import org.bytedeco.javacv.FrameGrabber.Exception;
+import org.bytedeco.javacv.OpenCVFrameGrabber;
+
+public class CamViewPort {
+	
+	final String grabLocation ;
+	
+	public CamViewPort(String ip) {
+		this.grabLocation = "http://"+ip+"/video?dummy=param.mjpg";
+	}
+	
+	public void view(){
+		OpenCVFrameGrabber grabber = new OpenCVFrameGrabber(grabLocation);
+		grabber.setFormat("mjpeg");
+		try {
+			grabber.start();
+			IplImage frame = grabber.grab();
+			
+			CanvasFrame canvas = new CanvasFrame("Grabbed image");
+			canvas.setCanvasSize(frame.width(), frame.height());
+			
+			long lastTime = System.currentTimeMillis();
+			final long delta = 2000;
+			while( canvas.isVisible() && (frame = grabber.grab()) != null) {
+				canvas.showImage(frame);
+				long currentTime = System.currentTimeMillis();
+				if( currentTime >= lastTime + delta){
+					new CaptureFrame(frame, "" + currentTime).run();
+					lastTime = currentTime;
+				}
+			}
+			
+			grabber.stop();
+			canvas.dispose();
+			System.exit(0);
+		} catch (Exception e) {
+			System.err.println("The image grabber has failed to grab");
+			e.printStackTrace();
+		}
+	}
+	
+	final static String ip = "192.168.9.104:8080";
+	
+	public static void main(String[] args) {
+		CamViewPort viewport = new CamViewPort(ip);
+		viewport.view();
+	}
+}

@@ -1,0 +1,95 @@
+package sight;
+
+import java.awt.image.BufferedImage;
+import java.nio.file.Paths;
+import java.util.List;
+
+import org.bytedeco.javacpp.opencv_core.IplImage;
+import org.bytedeco.javacv.CanvasFrame;
+import org.bytedeco.javacv.FrameGrabber.Exception;
+import org.bytedeco.javacv.OpenCVFrameGrabber;
+import org.opencv.core.Core;
+import org.opencv.core.Mat;
+import org.opencv.core.Point;
+import org.opencv.core.RotatedRect;
+import org.opencv.core.Size;
+import org.opencv.highgui.Highgui;
+
+import filters.BlobFilter;
+import filters.ShadowFilter;
+
+public class RoboViewPort {
+	final String grabLocation ;
+
+	/**
+	 * @param ip		IP of the android phone with IP webcam installed
+	 */
+	public RoboViewPort(String ip) {
+		this.grabLocation = "http://"+ip+"/video?dummy=param.mjpg";
+	}
+	
+	/**
+	 * Opens a javacv CanvasFrame for viewing through the remote camera
+	 * 
+	 * @param timeInterval			Time in millisecond between each capture
+	 * @param imageProcessing		Biconsumer taking the image name and the Mat matrix object from opencv
+	 */
+	public void captureAndProcess(long timeInterval){
+		OpenCVFrameGrabber grabber = new OpenCVFrameGrabber(grabLocation);
+		grabber.setFormat("mjpeg");
+		
+		try {
+			grabber.start();
+			IplImage frame = grabber.grab();
+			CanvasFrame shadowCanvas = new CanvasFrame("Shadow image");
+			CanvasFrame trueCanvas = new CanvasFrame("True image");
+			shadowCanvas.setCanvasSize(frame.width(), frame.height());
+			trueCanvas.setCanvasSize(frame.width(), frame.height());
+			
+			long lastTime = System.currentTimeMillis();
+			final long delta = timeInterval;
+			// only capture images when screen is available
+			while( shadowCanvas.isVisible() && (frame = grabber.grab()) != null) {
+				long currentTime = System.currentTimeMillis();
+				if( currentTime >= lastTime + delta){
+					String filename = "" + currentTime;
+					new CaptureFrame(frame, filename).run();
+					Mat unprocessed = Highgui.imread(CaptureFrame.imageFolder + filename + ".png");
+					Mat processed = new ShadowFilter(new Size(3, 3), 3.0, 0, 110).filter(unprocessed);
+					BlobFilter blobs = new BlobFilter(20);
+					processed = blobs.filter(processed);
+					List<RotatedRect> rectangles = blobs.rectangles(); 
+					// find the centre of each rectangle then get the box on the lowest row
+					Point lowestCentre = rectangles.stream()
+												.map(rectangle -> rectangle.center)
+												.reduce(new Point(0, 0), (p1, p2) -> (p1.y > p2.y) ? p1 : p2);
+					System.out.println(lowestCentre + " " + ((lowestCentre.x > frame.width()/2) ? "right" : "left"));
+					shadowCanvas.showImage(IplImage.createFrom(MatUtils.getBufferedImageFromMat(processed, BufferedImage.TYPE_BYTE_GRAY)));
+					trueCanvas.showImage(IplImage.createFrom(MatUtils.getBufferedImageFromMat(unprocessed, BufferedImage.TYPE_3BYTE_BGR)));
+					Paths.get(CaptureFrame.imageFolder + filename).toFile().delete();
+					lastTime = currentTime;
+				}
+			}
+			
+			grabber.stop();
+			shadowCanvas.dispose();
+			System.exit(0);
+		} catch (Exception e) {
+			System.err.println("The image grabber has failed to grab");
+			e.printStackTrace();
+		}
+	}
+	
+	/**
+	 * Loads native library
+	 */
+	public static void init(){
+		System.loadLibrary(Core.NATIVE_LIBRARY_NAME);
+	}
+	
+	public static void main(String[] args) {
+		RoboViewPort viewport = new RoboViewPort("142.157.110.31:8080");
+		RoboViewPort.init();
+		viewport.captureAndProcess(2000);
+	}
+}

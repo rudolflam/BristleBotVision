@@ -1,0 +1,15 @@
+package filters;
+
+import org.opencv.core.Mat;
+import org.opencv.imgproc.Imgproc;
+
+import sight.MatUtils;
+
+public class GreyScaleFilter {
+	public Mat filter(Mat src){
+		Mat out = MatUtils.createSameSizeMat(src, src.type());
+		// convert to grayscale and put into out 
+		Imgproc.cvtColor(src, out, Imgproc.COLOR_RGB2GRAY);
+		return out;
+	}
+}

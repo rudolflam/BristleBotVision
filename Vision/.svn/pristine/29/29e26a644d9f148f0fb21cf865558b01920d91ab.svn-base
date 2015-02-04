@@ -1,0 +1,35 @@
+package sight;
+
+import java.awt.image.BufferedImage;
+import java.util.LinkedList;
+import java.util.List;
+
+import org.bytedeco.javacpp.opencv_core.IplImage;
+import org.bytedeco.javacv.CanvasFrame;
+import org.opencv.core.Core;
+import org.opencv.core.CvType;
+import org.opencv.core.Mat;
+import org.opencv.core.Size;
+import org.opencv.imgproc.Imgproc;
+
+public class EdgeMap {
+	public static void main(String[] args) {
+		System.loadLibrary(Core.NATIVE_LIBRARY_NAME);
+		
+		BufferedImage grayImg = ShadowDetector.toGrayScale("./Img/room.jpg");
+		Mat grayMatrix = MatUtils.getMatfromBufferedImage(grayImg, CvType.CV_8UC1);
+		
+		List<Mat> l = new LinkedList<Mat>();
+		Size s = new Size(3,3);
+		l.stream().map( m-> BlurFilter.filter(m, s)).sequential();
+		
+		double lowThreshold = 0;
+		double ratio = 3;
+		
+		Mat blurred = BlurFilter.filter(grayMatrix, s);
+		Imgproc.Canny(grayMatrix, blurred, lowThreshold, lowThreshold * ratio, 3, true);
+		
+		CanvasFrame frame = new CanvasFrame("Image outpout");
+		frame.showImage( IplImage.createFrom(MatUtils.getBufferedImageFromMat(blurred, BufferedImage.TYPE_BYTE_GRAY)) );
+	}
+}

@@ -1,0 +1,50 @@
+package sight;
+
+import java.awt.image.BufferedImage;
+
+import org.opencv.core.Core;
+import org.opencv.core.Mat;
+import org.opencv.core.Size;
+import org.opencv.highgui.Highgui;
+import org.opencv.imgproc.Imgproc;
+
+import filters.BlackFilter;
+import filters.BlurFilter;
+import filters.ColourRGB2HSVFilter;
+import filters.GreyScaleFilter;
+import filters.HistogramEqualizationFilter;
+import filters.SaturationBrightnessFilter;
+import filters.TintFilter;
+
+public class EdgeMap {
+	public static void main(String[] args) {
+		System.loadLibrary(Core.NATIVE_LIBRARY_NAME);
+		String filename = "./Img/room.jpg";
+		GreyScaleFilter greyfilter = new GreyScaleFilter();
+		BlurFilter blurfilter = new BlurFilter(new Size(9,9));
+		
+		
+//		Stream.of(Highgui.imread("./Img/room.jpg")).map(img -> new GreyFilter().filter(img));	
+//		BufferedImage grayImg = ShadowDetector.toGrayScale("./Img/room.jpg");
+//		Mat grayMatrix = MatUtils.getMatfromBufferedImage(grayImg, CvType.CV_8UC1);
+//		
+		
+//		double lowThreshold = 35;
+//		double ratio = 3;
+//		
+//		Imgproc.Canny(processedImg, processedImg, lowThreshold, lowThreshold * ratio, 3, true);
+//		
+//		CanvasFrame frame = new CanvasFrame("Image outpout");
+//		frame.showImage( IplImage.createFrom(MatUtils.getBufferedImageFromMat(processedImg, BufferedImage.TYPE_BYTE_GRAY)) );
+		
+//		ColourRGB2HSVFilter filter = new ColourRGB2HSVFilter(ColourRGB2HSVFilter.HUE_MIN, ColourRGB2HSVFilter.SATURATION_MIN, ColourRGB2HSVFilter.BRIGHTNESS_MIN,
+//												ColourRGB2HSVFilter.HUE_MAX, 60, 40);
+		BlurFilter blur = new BlurFilter(new Size(3,3));
+		SaturationBrightnessFilter sat = new SaturationBrightnessFilter(3.0, 10.0);
+		HistogramEqualizationFilter equalizer = new HistogramEqualizationFilter();
+		BlackFilter black = new BlackFilter(60);
+		Mat m = Highgui.imread(filename);
+		Mat f1 = sat.filter(m);
+		MatUtils.showImage(sat.filter(m), null);
+	}
+}

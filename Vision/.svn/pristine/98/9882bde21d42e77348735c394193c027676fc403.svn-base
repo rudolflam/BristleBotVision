@@ -1,0 +1,35 @@
+package filters;
+
+import java.util.LinkedList;
+import java.util.List;
+
+import org.opencv.core.Core;
+import org.opencv.core.Mat;
+import org.opencv.core.MatOfPoint;
+import org.opencv.core.MatOfPoint2f;
+import org.opencv.core.Rect;
+import org.opencv.core.Scalar;
+import org.opencv.imgproc.Imgproc;
+
+import sight.MatUtils;
+
+public class BlobFilter implements MatFilter {
+
+	public BlobFilter() {
+		
+	}
+	
+	@Override
+	public Mat filter(Mat src) {
+		Mat out = MatUtils.copyOf(src);
+		List<MatOfPoint> list = new LinkedList<MatOfPoint>();
+		Mat hierarchy = new Mat();
+		Imgproc.findContours(out, list, hierarchy, Imgproc.RETR_TREE , Imgproc.CHAIN_APPROX_SIMPLE);
+		for (MatOfPoint matOfPoint : list) {
+			Rect rectangle = Imgproc.boundingRect(matOfPoint);
+			Core.rectangle(out, rectangle.tl(), rectangle.br(), new Scalar(255, 0, 0),1, 8,0);
+		}
+		return out;
+	}
+
+}

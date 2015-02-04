@@ -1,0 +1,22 @@
+package filters;
+
+import org.opencv.core.Mat;
+import org.opencv.imgproc.Imgproc;
+
+import sight.MatUtils;
+
+public class BlackFilter implements MatFilter{
+	
+	private final double threshold ;
+	
+	public BlackFilter(double threshold) {
+		this.threshold = threshold;
+	}
+
+	@Override
+	public Mat filter(Mat src) {
+		Mat out = MatUtils.createSameSizeMat(src);
+		Imgproc.threshold(src, out, threshold, 255, Imgproc.THRESH_BINARY_INV);
+		return out;
+	}
+}

@@ -1,0 +1,8 @@
+package sight;
+
+import org.opencv.core.Mat;
+
+@FunctionalInterface
+public interface MatFilter {
+	public Mat filter( Mat m );
+}

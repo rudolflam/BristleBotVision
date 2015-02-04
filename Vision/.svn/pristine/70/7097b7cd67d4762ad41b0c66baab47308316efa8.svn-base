@@ -1,0 +1,21 @@
+package filters;
+
+import org.opencv.core.Core;
+import org.opencv.core.Mat;
+import org.opencv.core.Scalar;
+
+import sight.MatUtils;
+
+public class TintFilter implements MatFilter{
+
+	
+	@Override
+	public Mat filter(Mat src) {
+		Mat out = MatUtils.createSameSizeMat(src);
+		Core.inRange(out, new Scalar(0, 0, 0), new Scalar(60, 60, 60), out);
+		return out;
+	}
+	
+	
+	
+}

@@ -1,0 +1,25 @@
+package sight;
+
+import org.opencv.core.Mat;
+import org.opencv.core.Size;
+import org.opencv.imgproc.Imgproc;
+
+
+public class BlurFilter implements MatFilter{
+	
+	public BlurFilter() {
+		// TODO Auto-generated constructor stub
+	}
+	
+	public static Mat filter(Mat src, Size ksize){
+		Mat out = MatUtils.createSameSizeMat(src, src.type());
+		Imgproc.GaussianBlur(src, out , ksize, 0);
+		return out;
+	}
+
+	@Override
+	public Mat filter(Mat m) {
+		// TODO Auto-generated method stub
+		return null;
+	}
+}

@@ -1,0 +1,16 @@
+package sight;
+
+import org.bytedeco.javacv.FrameGrabber;
+import org.bytedeco.javacv.FrameGrabber.Exception;
+
+
+public class Sight {
+	public static void main(String[] args) {
+		try {
+			FrameGrabber grabber = FrameGrabber.createDefault(0);
+			grabber.start();
+		} catch (Exception e) {
+			e.printStackTrace();
+		}
+	}
+}

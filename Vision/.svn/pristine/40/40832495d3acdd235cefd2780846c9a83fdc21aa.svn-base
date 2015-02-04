@@ -1,0 +1,47 @@
+package sight;
+
+import java.awt.image.BufferedImage;
+
+import org.bytedeco.javacpp.opencv_core.IplImage;
+import org.bytedeco.javacv.CanvasFrame;
+import org.opencv.core.Core;
+import org.opencv.core.Mat;
+import org.opencv.core.Size;
+import org.opencv.highgui.Highgui;
+
+import filters.BlobFilter;
+import filters.ShadowFilter;
+
+public class ShadowDetector {
+	
+	static String testImageLocation = "./Img/room.jpg";
+	static String testImageOut = "./Img/RoomOut.jpg";
+	
+	private String imgPath ;
+	
+	public ShadowDetector(String imgpath) {
+		this.imgPath = imgpath;
+	}
+	
+	/**
+	 * Loads native library
+	 */
+	public static void init(){
+		System.loadLibrary(Core.NATIVE_LIBRARY_NAME);
+	}
+
+	/**
+	 * Displays the image in a CanvasFrame
+	 */
+	public void show(){
+		Mat img = new ShadowFilter(new Size(5, 5), 3.0, 0, 70).filter(Highgui.imread(imgPath)); 
+		img = new BlobFilter().filter(img);
+		MatUtils.showImage(img, BufferedImage.TYPE_BYTE_GRAY);
+	}
+	
+	public static void main(String[] args) {
+		ShadowDetector detector = new ShadowDetector(testImageLocation);
+		ShadowDetector.init();
+		detector.show();
+	}
+}

@@ -1,0 +1,174 @@
+package sight;
+
+import java.awt.image.BufferedImage;
+import java.io.IOException;
+import java.io.OutputStream;
+import java.nio.file.Paths;
+import java.util.List;
+import java.util.logging.Logger;
+
+import org.bytedeco.javacpp.opencv_core.IplImage;
+import org.bytedeco.javacv.CanvasFrame;
+import org.bytedeco.javacv.FrameGrabber.Exception;
+import org.bytedeco.javacv.OpenCVFrameGrabber;
+import org.opencv.core.Core;
+import org.opencv.core.Mat;
+import org.opencv.core.RotatedRect;
+import org.opencv.core.Size;
+import org.opencv.highgui.Highgui;
+
+import sight.DirectionDecision.Direction;
+import androidPort.Messenger;
+import filters.BlobFilter;
+import filters.ShadowFilter;
+
+public class RoboViewPort {
+	
+	public static Logger logger = Logger.getLogger("RoboViewPort");
+	// http video server location 
+	private final String grabLocation ;
+	
+	// Serial communication
+	private CerealPortLine line;
+	private OutputStream cmdOut;
+	private boolean usingDirectSerial;
+	
+	/**
+	 * @param ip				IP of the android phone with IP webcam installed
+	 * @param hostPort			port number for the laptop host
+	 * @param serialDataRate	Serial communication rate (baud rate)
+	 * @param portIDs			ID names of port for the system (ex "COM3" for windows)
+	 */
+	public RoboViewPort(String ip, int hostPort, int serialDataRate, String...portIDs) {
+		this.grabLocation = "http://"+ip+"/video?dummy=param.mjpg";
+		
+		// setup serial
+		this.line = new CerealPortLine(2000, "COM1","COM2", "COM3");
+		this.usingDirectSerial = this.line.setup(serialDataRate);
+		if( usingDirectSerial ){
+			// set up serial coms
+			try {
+				this.cmdOut = line.outputStream();
+			} catch (IOException e) {
+				e.printStackTrace();
+			}
+		}
+		else {
+			// remote control command centre
+			Messenger messenger = new Messenger(hostPort);
+			messenger.start();
+		}
+	}
+	
+	/**
+	 * Opens a javacv CanvasFrame for viewing through the remote camera
+	 * 
+	 * @param timeInterval			Time in millisecond between each capture
+	 * @param imageProcessing		Biconsumer taking the image name and the Mat matrix object from opencv
+	 * @param showTrueImage			Display the captured image in a window
+	 * @param showProcessedImage	Display the processed image in a window
+	 */
+	public void captureAndProcess(long timeInterval, boolean showTrueImage, boolean showProcessedImage, int minBlobDimension){
+		OpenCVFrameGrabber grabber = new OpenCVFrameGrabber(grabLocation);
+		grabber.setFormat("mjpeg");
+		
+		try {
+			grabber.start();
+			IplImage frame = grabber.grab();
+			// create two screens, one for viewing the actual image and one for processed image
+			CanvasFrame shadowCanvas = new CanvasFrame("Shadow image");
+			CanvasFrame trueCanvas = new CanvasFrame("True image");
+			shadowCanvas.setCanvasSize(frame.width(), frame.height());
+			trueCanvas.setCanvasSize(frame.width(), frame.height());
+			
+			// set up time intervals in which computations should take place
+			long lastTime = System.currentTimeMillis();
+			final long delta = timeInterval;
+			// only capture images when screen is available
+			while( shadowCanvas.isVisible() && (frame = grabber.grab()) != null) {
+				long currentTime = System.currentTimeMillis();
+				if( currentTime >= lastTime + delta){
+					// capture image to harddrive
+					String filename = "" + currentTime;
+					new CaptureFrame(frame, filename).run();
+					
+					// Process images
+					Mat unprocessed = Highgui.imread(CaptureFrame.imageFolder + filename + ".png");
+					
+					//rotate by 180 so wires go upward
+					Mat rotation = MatUtils.createSameSizeMat(unprocessed);
+					Core.transpose(unprocessed, rotation);
+					Core.flip(rotation, rotation, 1);
+					Core.transpose(rotation, rotation);
+					Core.flip(rotation, rotation, 1);
+					
+					// core of shadow detection
+					Mat processed = new ShadowFilter(new Size(9, 9), 3.0, 0, 30).filter(rotation);
+					// blob filter gives side effect which can be harvested for a list of the rectangles found
+					BlobFilter blobs = new BlobFilter(minBlobDimension);
+					processed = blobs.filter(processed);
+					List<RotatedRect> rectangles = blobs.rectangles(); 
+					
+					findAndSendDirections(minBlobDimension, unprocessed.cols(), unprocessed.rows(),rectangles);
+					
+					// display out to screen
+					shadowCanvas.showImage(IplImage.createFrom(MatUtils.getBufferedImageFromMat(processed, BufferedImage.TYPE_BYTE_GRAY)));
+					trueCanvas.showImage(IplImage.createFrom(MatUtils.getBufferedImageFromMat(rotation, BufferedImage.TYPE_3BYTE_BGR)));
+					
+					// cleanup image to prevent bloating the filesystem
+					Paths.get(CaptureFrame.imageFolder + filename +".png").toFile().delete();
+					
+					// update time check
+					lastTime = currentTime;
+				}
+			}
+			// cleanup cleanup everybody cleanup
+			grabber.stop();
+			shadowCanvas.dispose();
+			System.exit(0);
+		} catch (Exception e) {
+			System.err.println("The image grabber has failed to grab");
+			e.printStackTrace();
+		}
+	}
+
+	/**
+	 * @param minBlobDimension		Minimum magnitude of the dimensions of the rectangular blob
+	 * @param unprocessed			The unprocessed Mat image matrix
+	 * @param rectangles			
+	 */
+	private void findAndSendDirections(int minBlobDimension, int matrixCols, int matrixRows, List<RotatedRect> rectangles) {
+		// find the centre of each rectangle then get the box on the lowest row
+		DirectionDecision decisionMaker = new DirectionDecision(matrixCols, matrixRows, minBlobDimension);
+		Direction direction = decisionMaker.given(rectangles);
+		// communication with operator and android
+		logger.info("Going to " + direction.name());
+		
+		// if serial port is directly attached to computer
+		if(this.usingDirectSerial){
+			try {
+				this.cmdOut.write(direction.code.getBytes());
+			} catch (IOException e) {
+				e.printStackTrace();
+			}
+		}
+		else {
+			// send command to controls
+			Messenger.send(direction.code);
+		}
+		
+	}
+	
+	/**
+	 * Loads native library
+	 */
+	public static void init(){
+		System.loadLibrary(Core.NATIVE_LIBRARY_NAME);
+	}
+	
+	public static void main(String[] args) {
+		RoboViewPort viewport = new RoboViewPort("192.168.9.104:8080", 1337, 19200, "COM3");
+		RoboViewPort.init();
+		viewport.captureAndProcess(500, true, true, 35);
+	}
+}

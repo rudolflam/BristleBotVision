@@ -1,0 +1,38 @@
+package filters;
+
+import org.opencv.core.Mat;
+
+import sight.MatUtils;
+
+public class SaturationBrightnessFilter implements MatFilter{
+
+	public static final double MIN_ALPHA = 0;
+	public static final double MIN_BETA = 0; 
+	public static final double MAX_ALPHA = 3;
+	public static final double MAX_BETA = 1000;
+	
+	private final double a, b;
+	
+	/**
+	 * @param alpha			The brightness 
+	 * @param beta			The contrast
+	 */
+	public SaturationBrightnessFilter(double alpha, double beta) {
+		this.a = (alpha > MAX_ALPHA) ? MAX_ALPHA : (alpha < MIN_ALPHA) ? MIN_ALPHA : alpha;
+		this.b = (beta > MAX_BETA) ? MAX_BETA : (beta < MIN_BETA)? MIN_BETA : beta;
+	}
+	
+	/**
+	 * Uses alpha-beta saturation and brightness filtering
+	 * 
+	 * @param src			Takes any image matrix
+	 * @return 				Matrix representing an altered image with brightness and contrast shifted by alpha and beta respectively
+	 */
+	@Override
+	public Mat filter(Mat src) {
+		Mat out = MatUtils.copyOf(src);
+		out.convertTo(out, out.type(), a, b); 
+		return out;
+	}
+
+}

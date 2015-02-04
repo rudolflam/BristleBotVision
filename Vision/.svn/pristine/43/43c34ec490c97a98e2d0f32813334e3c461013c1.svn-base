@@ -1,0 +1,32 @@
+package sight;
+
+import java.awt.image.BufferedImage;
+import java.awt.image.DataBufferByte;
+
+import org.opencv.core.Mat;
+
+public class MatUtils {
+	public static Mat createSameSizeMat(Mat src, int cvtype){
+		return new Mat(src.rows(), src.cols(), cvtype);
+	}
+	
+	public static Mat getMatfromBufferedImage(BufferedImage image, int cvtype){
+		Mat m = new Mat(image.getHeight(), image.getHeight(), cvtype );
+		m.put(m.rows(), m.cols(), ((DataBufferByte) image.getRaster().getDataBuffer()).getData());
+		return m;
+	}
+	
+	public static BufferedImage getBufferedImageFromMat(Mat src, int bufferedImageType){
+		
+		// get bytes from src
+		byte[] matrixData = new byte[src.rows() * src.cols() * src.channels()];
+		src.get(0,0, matrixData);
+		
+		// get access to bytes in new buffered image
+		BufferedImage buffered = new BufferedImage(src.cols(), src.rows(), bufferedImageType);
+		byte[] outBytes = ((DataBufferByte)buffered.getRaster().getDataBuffer()).getData();
+	
+		System.arraycopy(matrixData, 0, outBytes, 0, matrixData.length);
+		return buffered;
+	}
+}
